@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun 17 19:16:23 2019
+
+@author: mohamedchemkhi
+"""
+import mysql.connector
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+from matplotlib import style
+style.use("ggplot")
+from sklearn.cluster import KMeans
+from mysql.connector import errorcode
+from matplotlib import style
+from mpl_toolkits.mplot3d import Axes3D
+style.use("ggplot")
+
+
+final_result = []
+quantity_p = []
+quantity_pp = []
+marge_p = []
+marge_pp = []
+fr_cmd = []
+fr_cmdd = []
+res = []
+date1 = ''
+date2 = ''
+fr_produit = []
+
+mySQLConnection = mysql.connector.connect(host="127.0.0.1",
+                                          user="root",
+                                          passwd="ELklkilhlgsf224/",
+                                          database="TestData")
+
+cursor = mySQLConnection.cursor(prepared=False)
+
+
+# A cursor is a temporary work area created in the system memory when a SQL
+# statement is executed. A cursor contains information on a select statement
+# and the rows of data accessed by it. This temporary work area is used
+# to store the data retrieved from the database, and manipulate this data.
+
+
+def getFrequenceByDate(date1, date2, id_product):
+    try:
+        sql_select_query = "SELECT de.product_id,count(de.product_id) as nbr_cmd FROM TestData.ps_1orders as o left join TestData.ps_1order_detail de on de.id_order = o.id_order INNER join TestData.ps_1product prod on prod.id_product = de.product_id WHERE o.`date_add` between %s and %s and de.product_id = %s GROUP by de.product_id ORDER by nbr_cmd desc"
+        cursor.execute(sql_select_query, (date1, date2, id_product))
+        results = cursor.fetchall()
+        res = [list(i) for i in results]
+
+
+    except mysql.connector.Error as error:
+        print("Failed to get record from database: {}".format(error))
+
+    return res
+
+def FeatureProduct():
+    try:
+
+        sql_select_query = "SELECT de.product_id, sum(de.product_quantity) as quantity_p ,(prod.price - prod.wholesale_price) as marge_gain,count(de.product_id) as nbr_cmd FROM TestData.ps_1orders as o left join TestData.ps_1order_detail de on de.id_order = o.id_order INNER join TestData.ps_1product prod on prod.id_product = de.product_id WHERE o.`date_add` >= '2016-06-10' GROUP by de.product_id ORDER by nbr_cmd desc"
+        cursor.execute(sql_select_query)
+        result = cursor.fetchall()
+        final_result = [list(i) for i in result]
+
+    except mysql.connector.Error as error:
+        print("Failed to get record from database: {}".format(error))
+
+    return final_result
+
+annee='2018'
+
+mois = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+res1 = []
+
+
+final_result = FeatureProduct()
+for j in range(len(final_result)):
+    for i in range(len(mois)):
+
+        if mois[i] == '12':
+            date1 = annee + '-' + mois[i] + '-01'
+            date2 = annee + '-' + mois[i] + '-31'
+        else:
+            date1 = annee + '-' + mois[i] + '-01'
+            date2 = annee + '-' + mois[i + 1] + '-01'
+
+
+
+
+
+        id = final_result[j][0]
+        res = getFrequenceByDate(date1, date2, str(id))
+
+        if not res:
+
+            ress1 = [id, 0]
+            res1.append(ress1)
+        else:
+            res1.extend(res)
+
+print(res1)
+
+print(len(res1))
+length = len(res1)-2
+j = 0
+for i in range(len(res1)):
+
+    if res1[i][0] != res1[i + 1][0]:
+        print("id_prod:", res1[i][0], "mois:", mois[j], "frequence de commande:", res1[i][1])
+        print("\n")
+    else:
+        print("id_prod:", res1[i][0], "mois:", mois[j], "frequence de commande:", res1[i][1])
+    j = j + 1
+
+    if i == length:
+        print("id_prod:", res1[i][0], "mois:", mois[j], "frequence de commande:", res1[i][1])
+        break
+    if j == 12:
+        j = 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

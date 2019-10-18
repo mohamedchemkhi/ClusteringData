@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun 17 19:16:23 2019
+
+@author: mohamedchemkhi
+"""
+import mysql.connector
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+from matplotlib import style
+style.use("ggplot")
+from sklearn.cluster import KMeans
+from mysql.connector import errorcode
+from matplotlib import style
+from mpl_toolkits.mplot3d import Axes3D
+
+style.use("ggplot")
+
+
+final_result = []
+nbreProduit = []
+nbreProduits = []
+quantiteProduit = []
+quantiteProduits = []
+prixTotalProduitTTc = []
+prixTotalProduitsTTc = []
+
+mySQLConnection = mysql.connector.connect(host="127.0.0.1",
+                                          user="root",
+                                          passwd="ELklkilhlgsf224/",
+                                          database="TestData")
+
+cursor = mySQLConnection.cursor(prepared=False)
+
+
+# A cursor is a temporary work area created in the system memory when a SQL
+# statement is executed. A cursor contains information on a select statement
+# and the rows of data accessed by it. This temporary work area is used
+# to store the data retrieved from the database, and manipulate this data.
+
+def FeatureProduct():
+    try:
+
+        sql_select_query = "SELECT c.id_customer,COUNT(DISTINCT od.product_id) as nbreProduits, SUM(od.product_quantity)as quantiteProduits,SUM(o.total_products_wt) as prixTotalProduitTTc FROM ps_1customer as c left JOIN ps_1orders o on o.id_customer = c.id_customer left JOIN ps_1order_detail od on o.id_order = od.id_order GROUP by c.id_customer ORDER by nbreProduits DESC"
+        cursor.execute(sql_select_query)
+        result = cursor.fetchall()
+        final_result = [list(i) for i in result]
+
+
+
+
+    except mysql.connector.Error as error:
+        print("Failed to get record from database: {}".format(error))
+
+    finally:
+        # closing data base connexion
+        if mySQLConnection.is_connected():
+            cursor.close()
+            mySQLConnection.close()
+            print("connexion is closed")
+
+    return final_result
+
+
+final_result = FeatureProduct()
+
+#X = np.array(final_result)
+
+for j in range(len(final_result)):
+    nbreProduit = float(final_result[j][1])
+    nbreProduits.append(nbreProduit)
+    if (final_result[j][2]==None):
+        quantiteProduits.append(0)
+    else:
+        quantiteProduit = float(final_result[j][2])
+        quantiteProduits.append(quantiteProduit)
+    if (final_result[j][3]==None):
+        prixTotalProduitsTTc.append(0)
+    else:
+        prixTotalProduitTTc = float(final_result[j][3])
+        prixTotalProduitsTTc.append(prixTotalProduitTTc)
+
+
+
+df = pd.DataFrame({'nbre_produits': nbreProduits,
+                   'quantite_produits': quantiteProduits,
+                   'prix_achat_total': prixTotalProduitsTTc
+                   }
+                   )
+
+sse = []
+list_k = list(range(1, 10))
+
+for k in list_k:
+    km = KMeans(n_clusters=k)
+    km.fit(df)
+    sse.append(km.inertia_)
+
+# Plot sse against k
+
+plt.figure(figsize=(6, 6))
+plt.plot(list_k, sse, '-o')
+plt.xlabel('Number of clusters *k*')
+plt.ylabel('Sum of squared distance')
+
+
+kmeans = KMeans(n_clusters=5)
+kmeans.fit(df)
+
+centroids = kmeans.cluster_centers_
+labels = kmeans.labels_
+
+print("centroids", centroids)
+print("labels", labels)
+
+# df.loc[i, 'quantity_p']
+color_theme = np.array(['darkgrey', 'lightsalmon', 'powderblue', 'red', 'yellow'])
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+
+ax.scatter(df['nbre_produits'], df['quantite_produits'], df['prix_achat_total'], c=color_theme[labels])
+
+ax.scatter(centroids[:, 0], centroids[:, 1], centroids[:, 2], marker="x", s=150, linewidths=3, zorder=10)
+plt.show()
+
+

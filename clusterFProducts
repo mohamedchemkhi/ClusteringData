@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun 17 19:16:23 2019
+
+@author: mohamedchemkhi
+"""
+import mysql.connector
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+from matplotlib import style
+style.use("ggplot")
+from sklearn.cluster import KMeans
+from mysql.connector import errorcode
+from matplotlib import style
+from mpl_toolkits.mplot3d import Axes3D
+
+style.use("ggplot")
+
+
+final_result = []
+quantity_p = []
+quantity_pp = []
+marge_p = []
+marge_pp = []
+fr_cmd = []
+fr_cmdd = []
+
+mySQLConnection = mysql.connector.connect(host="127.0.0.1",
+                                          user="root",
+                                          passwd="ELklkilhlgsf224/",
+                                          database="TestData")
+
+cursor = mySQLConnection.cursor(prepared=False)
+
+
+# A cursor is a temporary work area created in the system memory when a SQL
+# statement is executed. A cursor contains information on a select statement
+# and the rows of data accessed by it. This temporary work area is used
+# to store the data retrieved from the database, and manipulate this data.
+
+def FeatureProduct():
+    try:
+
+        sql_select_query = "SELECT de.product_id, sum(de.product_quantity) as quantity_p ,(prod.price - prod.wholesale_price) as marge_gain,count(de.product_id) as nbr_cmd FROM TestData.ps_1orders as o left join TestData.ps_1order_detail de on de.id_order = o.id_order INNER join TestData.ps_1product prod on prod.id_product = de.product_id WHERE o.`date_add` >= '2016-06-10' GROUP by de.product_id ORDER by nbr_cmd desc"
+        cursor.execute(sql_select_query)
+        result = cursor.fetchall()
+        final_result = [list(i) for i in result]
+
+
+
+
+    except mysql.connector.Error as error:
+        print("Failed to get record from database: {}".format(error))
+
+    finally:
+        # closing data base connexion
+        if mySQLConnection.is_connected():
+            cursor.close()
+            mySQLConnection.close()
+            print("connexion is closed")
+
+    return final_result
+
+
+final_result = FeatureProduct()
+print(final_result)
+X = np.array(final_result)
+
+for j in range(len(final_result)):
+    quantity_p = float(final_result[j][1])
+    quantity_pp.append(quantity_p)
+    marge_p = float(final_result[j][2])
+    marge_pp.append(marge_p)
+    fr_cmd = float(final_result[j][3])
+    fr_cmdd.append(fr_cmd)
+
+df = pd.DataFrame({'quantity_p': quantity_pp,
+                   'marge_p': marge_pp,
+                   'fr_cmd': fr_cmdd
+                   }
+                   )
+sse = []
+list_k = list(range(1, 10))
+
+for k in list_k:
+    km = KMeans(n_clusters=k)
+    km.fit(df)
+    sse.append(km.inertia_)
+
+# Plot sse against k
+
+plt.figure(figsize=(6, 6))
+plt.plot(list_k, sse, '-o')
+plt.xlabel('Number of clusters *k*')
+plt.ylabel('Sum of squared distance')
+
+
+
+
+kmeans = KMeans(n_clusters=5)
+kmeans.fit(df)
+
+centroids = kmeans.cluster_centers_
+labels = kmeans.labels_
+
+print("centroids", centroids)
+print("labels", labels)
+
+# df.loc[i, 'quantity_p']
+color_theme = np.array(['darkgrey', 'lightsalmon', 'powderblue', 'red', 'yellow'])
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+
+ax.scatter(df['quantity_p'], df['marge_p'], df['fr_cmd'], c=color_theme[labels])
+
+ax.scatter(centroids[:, 0], centroids[:, 1], centroids[:, 2], marker="x", s=150, linewidths=3, zorder=10)
+plt.show()
+
+
