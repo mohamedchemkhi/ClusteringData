@@ -33,8 +33,8 @@ fr_produit = []
 
 mySQLConnection = mysql.connector.connect(host="127.0.0.1",
                                           user="root",
-                                          passwd="ELklkilhlgsf224/",
-                                          database="TestData")
+                                          passwd="Your Password",
+                                          database="Data Base name")
 
 cursor = mySQLConnection.cursor(prepared=False)
 

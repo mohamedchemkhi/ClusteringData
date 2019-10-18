@@ -30,8 +30,8 @@ prixTotalProduitsTTc = []
 
 mySQLConnection = mysql.connector.connect(host="127.0.0.1",
                                           user="root",
-                                          passwd="ELklkilhlgsf224/",
-                                          database="TestData")
+                                          passwd="your password",
+                                          database="DataBase Name")
 
 cursor = mySQLConnection.cursor(prepared=False)
 
